@@ -108,11 +108,12 @@ int main() {
           // state vector
 
           VectorXd estimate(4);
+          const VectorXd x = ukf.x();
 
-          double p_x = ukf.x_(0);
-          double p_y = ukf.x_(1);
-          double v = ukf.x_(2);
-          double yaw = ukf.x_(3);
+          double p_x = x(0);
+          double p_y = x(1);
+          double v = x(2);
+          double yaw = x(3);
 
           double v1 = cos(yaw) * v;
           double v2 = sin(yaw) * v;
