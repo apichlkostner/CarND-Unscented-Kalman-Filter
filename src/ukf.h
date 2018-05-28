@@ -71,11 +71,9 @@ class UKF {
    */
   void UpdateRadar(MeasurementPackage meas_package);
 
-  VectorXd x() const {
-    return x_;
-  }
+  VectorXd x() const { return x_; }
 
-private:
+ private:
   ///* Weights of sigma points
   VectorXd weights_;
 
@@ -106,7 +104,8 @@ private:
   ///* predicted sigma points matrix
   MatrixXd Xsig_pred_;
 
-  void PredictMeanAndCovariance(VectorXd& x_out, MatrixXd& P_out, const MatrixXd& Xsig_pred);
+  void PredictMeanAndCovariance(VectorXd& x_out, MatrixXd& P_out,
+                                const MatrixXd& Xsig_pred);
 
   MatrixXd SigmaPointPrediction(double dt, const MatrixXd& Xsig_aug);
 
