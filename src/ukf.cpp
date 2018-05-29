@@ -1,6 +1,7 @@
 #include "ukf.h"
 #include <iostream>
 #include "Eigen/Dense"
+#include "tools.h"
 
 using namespace std;
 using Eigen::MatrixXd;
@@ -65,12 +66,36 @@ UKF::~UKF() {}
  * either radar or laser.
  */
 void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
-  /**
-TODO:
+  if (!is_initialized_) {
+    time_us_ = meas_package.timestamp_;
+    if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
+      x_ << meas_package.raw_measurements_(0),
+          meas_package.raw_measurements_(1), 0, 0, 0;
+    } else {
+      VectorXd rad_meas =
+          RadarMeasurement::polar2cartesian(meas_package.raw_measurements_);
+      double v = sqrt(rad_meas(0) * rad_meas(0) + rad_meas(1) * rad_meas(1));
 
-Complete this function! Make sure you switch between lidar and radar
-measurements.
-*/
+      x_ << rad_meas(0), rad_meas(1), v, 0, 0;
+    }
+
+    is_initialized_ = true;
+  } else {
+    if (meas_package.timestamp_ >= time_us_) {
+      double dt = (meas_package.timestamp_ - time_us_) / 1000000.0;
+      time_us_ = meas_package.timestamp_;
+
+      MatrixXd Xsig_pred = Prediction(dt);
+
+      if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
+        UpdateLidar(meas_package, dt);
+      } else {
+        UpdateRadar(meas_package, Xsig_pred, dt);
+      }
+    } else {
+      // discard measurements with timestamps in the past
+    }
+  }
 }
 
 /**
@@ -78,7 +103,7 @@ measurements.
  * @param {double} dt the change in time (in seconds) between the last
  * measurement and this one.
  */
-void UKF::Prediction(double dt) {
+MatrixXd UKF::Prediction(double dt) {
   /**
 TODO:
 
@@ -91,7 +116,7 @@ vector, x_. Predict sigma points, the state, and the state covariance matrix.
  * Updates the state and the state covariance matrix using a laser measurement.
  * @param {MeasurementPackage} meas_package
  */
-void UKF::UpdateLidar(MeasurementPackage meas_package) {
+void UKF::UpdateLidar(const MeasurementPackage& meas_package, double dt) {
   /**
 TODO:
 
@@ -106,15 +131,72 @@ You'll also need to calculate the lidar NIS.
  * Updates the state and the state covariance matrix using a radar measurement.
  * @param {MeasurementPackage} meas_package
  */
-void UKF::UpdateRadar(MeasurementPackage meas_package) {
-  /**
-TODO:
+void UKF::UpdateRadar(const MeasurementPackage& meas_package,
+                      const MatrixXd& Xsig_pred, double dt) {
+  constexpr int n_z = 3;
+  // set vector for weights
+  VectorXd weights = VectorXd(2 * n_aug_ + 1);
+  double weight_0 = lambda_ / (lambda_ + n_aug_);
+  weights(0) = weight_0;
+  for (int i = 1; i < 2 * n_aug_ + 1; i++) {
+    double weight = 0.5 / (n_aug_ + lambda_);
+    weights(i) = weight;
+  }
 
-Complete this function! Use radar data to update the belief about the object's
-position. Modify the state vector, x_, and covariance, P_.
+  // create matrix for sigma points in measurement space
+  MatrixXd Zsig = MatrixXd(n_z, 2 * n_aug_ + 1);
 
-You'll also need to calculate the radar NIS.
-*/
+  /*******************************************************************************
+   * Student part begin
+   ******************************************************************************/
+
+  // transform sigma points into measurement space
+  for (int i = 0; i < 2 * n_aug_ + 1; i++) {  // 2n+1 simga points
+
+    // extract values for better readibility
+    double p_x = Xsig_pred(0, i);
+    double p_y = Xsig_pred(1, i);
+    double v = Xsig_pred(2, i);
+    double yaw = Xsig_pred(3, i);
+
+    double v1 = cos(yaw) * v;
+    double v2 = sin(yaw) * v;
+
+    // measurement model
+    Zsig(0, i) = sqrt(p_x * p_x + p_y * p_y);                          // r
+    Zsig(1, i) = atan2(p_y, p_x);                                      // phi
+    Zsig(2, i) = (p_x * v1 + p_y * v2) / sqrt(p_x * p_x + p_y * p_y);  // r_dot
+  }
+
+  // mean predicted measurement
+  VectorXd z_pred = VectorXd(n_z);
+  z_pred.fill(0.0);
+  for (int i = 0; i < 2 * n_aug_ + 1; i++) {
+    z_pred = z_pred + weights(i) * Zsig.col(i);
+  }
+
+  // innovation covariance matrix S
+  MatrixXd S = MatrixXd(n_z, n_z);
+  S.fill(0.0);
+  for (int i = 0; i < 2 * n_aug_ + 1; i++) {  // 2n+1 simga points
+    // residual
+    VectorXd z_diff = Zsig.col(i) - z_pred;
+
+    // angle normalization
+    z_diff(1) = Tools::NormalizeAngle(z_diff(1));
+
+    S = S + weights(i) * z_diff * z_diff.transpose();
+  }
+
+  // add measurement noise covariance matrix
+  MatrixXd R = MatrixXd(n_z, n_z);
+  R << std_radr_ * std_radr_, 0, 0, 0, std_radphi_ * std_radphi_, 0, 0, 0,
+      std_radrd_ * std_radrd_;
+  S = S + R;
+
+  // write result
+  // *z_out = z_pred;
+  // *S_out = S;
 }
 
 void UKF::PredictMeanAndCovariance(VectorXd& x_out, MatrixXd& P_out,
@@ -143,8 +225,7 @@ void UKF::PredictMeanAndCovariance(VectorXd& x_out, MatrixXd& P_out,
     VectorXd x_diff = Xsig_pred.col(i) - x;
 
     // angle normalization
-    while (x_diff(3) > M_PI) x_diff(3) -= 2. * M_PI;
-    while (x_diff(3) < -M_PI) x_diff(3) += 2. * M_PI;
+    x_diff(3) = Tools::NormalizeAngle(x_diff(3));
 
     P = P + weights(i) * x_diff * x_diff.transpose();
   }
@@ -221,13 +302,13 @@ MatrixXd UKF::AugmentedSigmaPoints() {
   // create square root matrix
   MatrixXd L = P_aug.llt().matrixL();
 
-  double faktor = sqrt(lambda_ + n_aug_);
+  double factor = sqrt(lambda_ + n_aug_);
 
   // create augmented sigma points
   Xsig_aug.col(0) = x_aug;
   for (int i = 0; i < n_aug_; i++) {
-    Xsig_aug.col(i + 1) = x_aug + faktor * L.col(i);
-    Xsig_aug.col(i + 1 + n_aug_) = x_aug - faktor * L.col(i);
+    Xsig_aug.col(i + 1) = x_aug + factor * L.col(i);
+    Xsig_aug.col(i + 1 + n_aug_) = x_aug - factor * L.col(i);
   }
 
   return P_aug;
@@ -240,12 +321,12 @@ MatrixXd UKF::GenerateSigmaPoints() {
   // set first column of sigma point matrix
   Xsig.col(0) = x_;
 
-  double faktor = sqrt(lambda_ + n_x_);
+  double factor = sqrt(lambda_ + n_x_);
 
   // set remaining sigma points
   for (int i = 0; i < n_x_; i++) {
-    Xsig.col(i + 1) = x_ + faktor * A.col(i);
-    Xsig.col(i + 1 + n_x_) = x_ - faktor * A.col(i);
+    Xsig.col(i + 1) = x_ + factor * A.col(i);
+    Xsig.col(i + 1 + n_x_) = x_ - factor * A.col(i);
   }
 
   return Xsig;
