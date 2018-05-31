@@ -26,9 +26,10 @@ class Tools {
                          const vector<VectorXd> &ground_truth);
 
   static double NormalizeAngle(double angle) {
-    if (angle > M_PI) {
+    while (angle > M_PI) {
       angle -= 2 * M_PI;
-    } else if (angle < -M_PI) {
+    }
+    while (angle < -M_PI) {
       angle += 2 * M_PI;
     }
 

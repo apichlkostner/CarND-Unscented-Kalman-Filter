@@ -8,9 +8,10 @@ class RadarMeasurement : public Measurement {
   /**
    * Constructor
    */
-  RadarMeasurement() : Measurement(MatrixXd(3, 3)) {
+  RadarMeasurement(double std_radr = 0.3, double std_radrd = 0.3, double std_radphi = 0.03) : Measurement(MatrixXd(3, 3)) {
     // radar covariance matrix
-    R_ << 0.09, 0, 0, 0, 0.0009, 0, 0, 0, 0.09;
+    R_ << std_radr * std_radr, 0, 0, 0, std_radphi * std_radphi, 0, 0, 0,
+      std_radrd * std_radrd;
   }
 
   /**

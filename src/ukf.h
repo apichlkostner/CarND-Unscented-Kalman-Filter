@@ -87,6 +87,8 @@ class UKF {
   ///* predicted sigma points matrix
   MatrixXd Xsig_pred_;
 
+  RadarMeasurement radar_measurement_;
+
   /**
    * Prediction Predicts sigma points, the state, and the state covariance
    * matrix
@@ -108,6 +110,14 @@ class UKF {
                    const MatrixXd& Xsig_pred, double dt);
 
   void PredictMeanAndCovariance(const MatrixXd& Xsig_pred);
+
+  VectorXd RadarMean(const MatrixXd& Xsig_pred, const MatrixXd& Zsig);
+
+  MatrixXd RadarInno(const MatrixXd& Xsig_pred, const MatrixXd& Zsig,
+                     const VectorXd& z_pred);
+
+  MatrixXd RadarKalmanGain(const MatrixXd& S, const MatrixXd& Xsig_pred,
+                           const MatrixXd& Zsig, const VectorXd z_pred);
 
   MatrixXd SigmaPointPrediction(double dt, const MatrixXd& Xsig_aug);
 

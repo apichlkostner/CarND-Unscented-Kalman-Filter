@@ -17,7 +17,7 @@ class Measurement {
 
   virtual ~Measurement() {}
 
-  virtual const VectorXd cartesian(const VectorXd& x);
+  //virtual const VectorXd cartesian(const VectorXd& x);
 
   // returns the covariance matrix
   const MatrixXd& R() { return R_; }
