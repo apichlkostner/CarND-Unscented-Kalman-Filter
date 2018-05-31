@@ -8,7 +8,7 @@ set(CXX_FLAGS "-Wall -Wno-int-in-bool-context -Wno-misleading-indentation")
 set(CMAKE_CXX_FLAGS "${CXX_FLAGS}")
 set(CMAKE_BUILD_TYPE Debug)
 
-set(sources src/ukf.cpp src/main.cpp src/tools.cpp)
+set(sources src/ukf.cpp src/main.cpp src/tools.cpp src/RadarMeasurement.cpp)
 
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin") 

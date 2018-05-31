@@ -33,7 +33,7 @@ class UKF {
   const VectorXd x() const { return x_; }
 
  private:
-  ///* time when the state is true, in us
+  ///* last timestamp in us
   long long time_us_;
 
   ///* Process noise standard deviation longitudinal acceleration in m/s^2
@@ -107,14 +107,15 @@ class UKF {
   void UpdateRadar(const MeasurementPackage& meas_package,
                    const MatrixXd& Xsig_pred, double dt);
 
-  void PredictMeanAndCovariance(VectorXd& x_out, MatrixXd& P_out,
-                                const MatrixXd& Xsig_pred);
+  void PredictMeanAndCovariance(const MatrixXd& Xsig_pred);
 
   MatrixXd SigmaPointPrediction(double dt, const MatrixXd& Xsig_aug);
 
   MatrixXd GenerateSigmaPoints();
 
   MatrixXd AugmentedSigmaPoints();
+
+  MatrixXd Sigma2Meas(const MatrixXd& Xsig_pred);
 };
 
 #endif /* UKF_H */
