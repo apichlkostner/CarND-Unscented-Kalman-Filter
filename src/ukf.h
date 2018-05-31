@@ -71,6 +71,7 @@ class UKF {
 
   ///* initially set to false, set to true in first call of ProcessMeasurement
   bool is_initialized_;
+  bool v_initialized_;
 
   ///* if this is false, laser measurements will be ignored (except for init)
   bool use_laser_;
@@ -88,6 +89,7 @@ class UKF {
   MatrixXd Xsig_pred_;
 
   RadarMeasurement radar_measurement_;
+  LidarMeasurement lidar_measurement_;
 
   /**
    * Prediction Predicts sigma points, the state, and the state covariance

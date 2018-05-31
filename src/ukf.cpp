@@ -82,19 +82,20 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     time_us_ = meas_package.timestamp_;
     if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
       x_ << meas_package.raw_measurements_(0),
-          meas_package.raw_measurements_(1), 0, 0, 0;
+          meas_package.raw_measurements_(1), 5, 0, 0;
 
-      P_ << std_laspx_ * std_laspx_, 0, 0, 0, 0, 0, std_laspy_ * std_laspy_, 0,
-          0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1;
+      MatrixXd R = lidar_measurement_.R();
+
+      P_ << R(0), 0, 0, 0, 0, 0, R(1), 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 5, 0,
+          0, 0, 0, 0, 5;
     } else {
       VectorXd rad_meas =
           RadarMeasurement::polar2cartesian(meas_package.raw_measurements_);
-      double v = sqrt(rad_meas(0) * rad_meas(0) + rad_meas(1) * rad_meas(1));
 
-      x_ << rad_meas(0), rad_meas(1), v, 0, 0;
+      x_ << rad_meas(0), rad_meas(1), rad_meas(2), 0, 0;
       MatrixXd R = radar_measurement_.R();
-      P_ << R(0), 0, 0, 0, 0, 0, R(1), 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 100,
-          0, 0, 0, 0, 0, 100;
+      P_ << R(0), 0, 0, 0, 0, 0, R(1), 0, 0, 0, 0, 0, R(2), 0, 0, 0, 0, 0, 5,
+          0, 0, 0, 0, 0, 5;
     }
 
     is_initialized_ = true;
@@ -107,6 +108,12 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
       if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
         UpdateLidar(meas_package, dt);
       } else {
+        if (!v_initialized_) {
+          MatrixXd R = radar_measurement_.R();
+          x_(2) = meas_package.raw_measurements_(2);
+          P_(2, 2) = R(2);
+          v_initialized_ = true;
+        }
         UpdateRadar(meas_package, Xsig_pred, dt);
       }
     } else {
@@ -114,9 +121,8 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     }
   }
 
-  // cout << "x = " << x_(0) << " " << x_(1) << " " << x_(2) << " " << x_(3) <<
-  // " "
-  //      << x_(4) << " " << endl;
+  cout << "x = " << x_(0) << " " << x_(1) << " " << x_(2) << " " << x_(3) << " "
+       << x_(4) << " " << endl;
 }
 
 /**
@@ -152,6 +158,23 @@ position. Modify the state vector, x_, and covariance, P_.
 
 You'll also need to calculate the lidar NIS.
 */
+  const MatrixXd H = lidar_measurement_.H();
+  VectorXd z_pred = H * x_;
+  VectorXd z = meas_package.raw_measurements_;
+  VectorXd y = z - z_pred;
+
+  MatrixXd Ht = H.transpose();  // used twice
+  MatrixXd S = H * P_ * Ht + lidar_measurement_.R();
+  MatrixXd PHt = P_ * Ht;
+
+  MatrixXd K = PHt * S.inverse();
+
+  // new estimate
+  x_ = x_ + (K * y);
+  long x_size = x_.size();
+  MatrixXd I = MatrixXd::Identity(x_size, x_size);
+
+  P_ = (I - K * H) * P_;
 }
 
 VectorXd UKF::RadarMean(const MatrixXd& Xsig_pred, const MatrixXd& Zsig) {

@@ -12,12 +12,15 @@ class LidarMeasurement : public Measurement {
   /**
    * Constructor
    */
-  LidarMeasurement() : Measurement(MatrixXd(2, 2)), H_(2, 4) {
+  LidarMeasurement(double std_laspx = 0.15, double std_laspy = 0.15)
+      : Measurement(MatrixXd(2, 2)), H_(2, 5) {
     // measurement covariance matrix for lidar
-    R_ << 0.0225, 0, 0, 0.0225;
+    R_ << std_laspx * std_laspx, 0, 0, std_laspy * std_laspy;
 
     // measurement matrix for lidar
-    H_ << 1, 0, 0, 0, 0, 1, 0, 0;
+    H_.fill(0);
+    H_(0, 0) = 1;
+    H_(1, 1) = 1;
   }
 
   /**
