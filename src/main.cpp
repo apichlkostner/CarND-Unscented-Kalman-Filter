@@ -4,6 +4,7 @@
 #include "json.hpp"
 #include "tools.h"
 #include "ukf.h"
+#include "Logger.h"
 
 using namespace std;
 
@@ -29,7 +30,7 @@ int main() {
   uWS::Hub h;
 
   // Create a Kalman Filter instance
-  UKF ukf;
+  UKF ukf;  
 
   // used to compute the RMSE later
   Tools tools;
@@ -42,6 +43,8 @@ int main() {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
+
+    static Logger logger("gt.csv");
 
     if (length && length > 2 && data[0] == '4' && data[1] == '2') {
       auto s = hasData(std::string(data));
@@ -100,6 +103,8 @@ int main() {
           gt_values(2) = vx_gt;
           gt_values(3) = vy_gt;
           ground_truth.push_back(gt_values);
+          
+          logger.log(gt_values);
 
           // Call ProcessMeasurment(meas_package) for Kalman filter
           ukf.ProcessMeasurement(meas_package);

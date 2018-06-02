@@ -41,12 +41,10 @@ UKF::UKF() {
   }
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 1;
+  std_a_ = 0.8;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
   std_yawdd_ = 1;
-
-  
 }
 
 UKF::~UKF() {}
@@ -69,16 +67,16 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
 
       MatrixXd R = lidar_measurement_.R();
 
-      P_ << R(0), 0, 0, 0, 0, 0, R(1), 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 5, 0,
-          0, 0, 0, 0, 5;
+      P_ << R(0), 0, 0, 0, 0, 0, R(1), 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 5, 0, 0,
+          0, 0, 0, 5;
     } else {
       VectorXd rad_meas =
           RadarMeasurement::polar2cartesian(meas_package.raw_measurements_);
 
       x_ << rad_meas(0), rad_meas(1), rad_meas(2), 0, 0;
       MatrixXd R = radar_measurement_.R();
-      P_ << R(0), 0, 0, 0, 0, 0, R(1), 0, 0, 0, 0, 0, R(2), 0, 0, 0, 0, 0, 5,
-          0, 0, 0, 0, 0, 5;
+      P_ << R(0), 0, 0, 0, 0, 0, R(1), 0, 0, 0, 0, 0, R(2), 0, 0, 0, 0, 0, 5, 0,
+          0, 0, 0, 0, 5;
     }
 
     is_initialized_ = true;
@@ -104,8 +102,8 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     }
   }
 
-  // cout << "x = " << x_(0) << " " << x_(1) << " " << x_(2) << " " << x_(3) << " "
-  //      << x_(4) << " " << endl;
+  // cout << "x = " << x_(0) << " " << x_(1) << " " << x_(2) << " " << x_(3) <<
+  // " "  << x_(4) << " " << endl;
 }
 
 /**

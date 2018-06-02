@@ -1,26 +1,30 @@
 #ifndef LOGGER_H_
 #define LOGGER_H_
 
-#include <iostream>
 #include <fstream>
+#include <iostream>
 
 using namespace std;
 
 class Logger {
  public:
- Logger() {
-     nis_file_.open("nis.csv");
- }
- virtual ~Logger(){
-     nis_file_.close();
- }
+  Logger(string filename) { file_.open(filename); }
 
-void log(string log, double nis){
-    nis_file_ << log << "," << nis << endl;
-}
+  Logger() : Logger("nis.csv") {}
+
+  virtual ~Logger() { file_.close(); }
+
+  void log(string log, double nis) { file_ << log << "," << nis << endl; }
+
+  void log(VectorXd v) {
+    for (auto i = 0; i < v.size(); i++) {
+      file_ << v(i) << ",";
+    }
+    file_ << endl;
+  }
 
  private:
- ofstream nis_file_;
+  ofstream file_;
 };
 
 #endif
