@@ -46,24 +46,7 @@ UKF::UKF() {
   // Process noise standard deviation yaw acceleration in rad/s^2
   std_yawdd_ = 1;
 
-  // DO NOT MODIFY measurement noise values below these are provided by the
-  // sensor manufacturer.
-  // Laser measurement noise standard deviation position1 in m
-  std_laspx_ = 0.15;
-
-  // Laser measurement noise standard deviation position2 in m
-  std_laspy_ = 0.15;
-
-  // Radar measurement noise standard deviation radius in m
-  std_radr_ = 0.3;
-
-  // Radar measurement noise standard deviation angle in rad
-  std_radphi_ = 0.03;
-
-  // Radar measurement noise standard deviation radius change in m/s
-  std_radrd_ = 0.3;
-  // DO NOT MODIFY measurement noise values above these are provided by the
-  // sensor manufacturer.
+  
 }
 
 UKF::~UKF() {}
@@ -121,8 +104,8 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     }
   }
 
-  cout << "x = " << x_(0) << " " << x_(1) << " " << x_(2) << " " << x_(3) << " "
-       << x_(4) << " " << endl;
+  // cout << "x = " << x_(0) << " " << x_(1) << " " << x_(2) << " " << x_(3) << " "
+  //      << x_(4) << " " << endl;
 }
 
 /**
@@ -175,6 +158,10 @@ You'll also need to calculate the lidar NIS.
   MatrixXd I = MatrixXd::Identity(x_size, x_size);
 
   P_ = (I - K * H) * P_;
+
+  // NIS
+  nis_lidar_ = y.transpose() * S.inverse() * y;
+  logger.log("lidar", nis_lidar_);
 }
 
 VectorXd UKF::RadarMean(const MatrixXd& Xsig_pred, const MatrixXd& Zsig) {
@@ -264,6 +251,10 @@ void UKF::UpdateRadar(const MeasurementPackage& meas_package,
   // update state mean and covariance matrix
   x_ = x_ + K * z_diff;
   P_ = P_ - K * S * K.transpose();
+  // NIS
+  VectorXd y = z - z_pred;
+  nis_radar_ = y.transpose() * S.inverse() * y;
+  logger.log("radar", nis_radar_);
 }
 
 void UKF::PredictMeanAndCovariance(const MatrixXd& Xsig_pred) {

@@ -19,7 +19,6 @@ MatrixXd RadarMeasurement::CalculateJacobian(const VectorXd& x_state) {
   }
 
   float r2c0 = py * (vx * py - vy * px) / p_xy32;
-  //float r2c1 = px * (vy * px - vx * py) / p_xy32;
 
   Hj << px / p_xy2s, py / p_xy2s, 0.0, 0.0, -py / p_xy2, px / p_xy2, 0.0, 0.0,
       r2c0, r2c0, px / p_xy2s, py / p_xy2s;
