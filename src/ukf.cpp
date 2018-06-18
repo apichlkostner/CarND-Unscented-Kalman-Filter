@@ -15,7 +15,7 @@ using std::vector;
  */
 UKF::UKF() {
   // if this is false, laser measurements will be ignored (except during init)
-  use_laser_ = true;
+  use_lidar_ = true;
 
   // if this is false, radar measurements will be ignored (except during init)
   use_radar_ = true;
@@ -32,19 +32,22 @@ UKF::UKF() {
   // initial covariance matrix
   P_ = MatrixXd(n_x_, n_x_);
 
+  // initialization of weights
   weights_ = VectorXd(2 * n_aug_ + 1);
+
   double weight_0 = lambda_ / (lambda_ + n_aug_);
   weights_(0) = weight_0;
+
   for (int i = 1; i < 2 * n_aug_ + 1; i++) {
     double weight = 0.5 / (n_aug_ + lambda_);
     weights_(i) = weight;
   }
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 0.8;
+  std_a_ = 0.7;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 1;
+  std_yawdd_ = 1.0;
 }
 
 UKF::~UKF() {}
@@ -60,26 +63,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   double dt = (meas_package.timestamp_ - time_us_) / 1000000.0;
 
   if (!is_initialized_ || abs(dt) > DTMAX) {
-    time_us_ = meas_package.timestamp_;
-    if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
-      x_ << meas_package.raw_measurements_(0),
-          meas_package.raw_measurements_(1), 5, 0, 0;
-
-      MatrixXd R = lidar_measurement_.R();
-
-      P_ << R(0), 0, 0, 0, 0, 0, R(1), 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 5, 0, 0,
-          0, 0, 0, 5;
-    } else {
-      VectorXd rad_meas =
-          RadarMeasurement::polar2cartesian(meas_package.raw_measurements_);
-
-      x_ << rad_meas(0), rad_meas(1), rad_meas(2), 0, 0;
-      MatrixXd R = radar_measurement_.R();
-      P_ << R(0), 0, 0, 0, 0, 0, R(1), 0, 0, 0, 0, 0, R(2), 0, 0, 0, 0, 0, 5, 0,
-          0, 0, 0, 0, 5;
-    }
-
-    is_initialized_ = true;
+    InitFilter(meas_package);
   } else {
     if (meas_package.timestamp_ >= time_us_) {
       time_us_ = meas_package.timestamp_;
@@ -87,23 +71,26 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
       MatrixXd Xsig_pred = Prediction(dt);
 
       if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
-        UpdateLidar(meas_package, dt);
-      } else {
-        if (!v_initialized_) {
-          MatrixXd R = radar_measurement_.R();
-          x_(2) = meas_package.raw_measurements_(2);
-          P_(2, 2) = R(2);
-          v_initialized_ = true;
+        // LIDAR measuement
+        if (use_lidar_) {
+          UpdateLidar(meas_package, dt);
         }
-        UpdateRadar(meas_package, Xsig_pred, dt);
+      } else {
+        // RADAR measurement
+        if (use_radar_) {
+          if (!v_initialized_) {
+            MatrixXd R = radar_measurement_.R();
+            x_(2) = meas_package.raw_measurements_(2);
+            P_(2, 2) = R(2);
+            v_initialized_ = true;
+          }
+          UpdateRadar(meas_package, Xsig_pred, dt);
+        }
       }
     } else {
       // discard measurements with timestamps in the past
     }
   }
-
-  // cout << "x = " << x_(0) << " " << x_(1) << " " << x_(2) << " " << x_(3) <<
-  // " "  << x_(4) << " " << endl;
 }
 
 /**
@@ -112,12 +99,6 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
  * measurement and this one.
  */
 MatrixXd UKF::Prediction(double dt) {
-  /**
-TODO:
-
-Complete this function! Estimate the object's location. Modify the state
-vector, x_. Predict sigma points, the state, and the state covariance matrix.
-*/
   const MatrixXd Xsig_aug = AugmentedSigmaPoints();
   const MatrixXd Xsig_pred = SigmaPointPrediction(dt, Xsig_aug);
 
@@ -127,18 +108,11 @@ vector, x_. Predict sigma points, the state, and the state covariance matrix.
 }
 
 /**
- * Updates the state and the state covariance matrix using a laser measurement.
+ * Updates the state and the state covariance matrix using a laser
+ * measurement.
  * @param {MeasurementPackage} meas_package
  */
 void UKF::UpdateLidar(const MeasurementPackage& meas_package, double dt) {
-  /**
-TODO:
-
-Complete this function! Use lidar data to update the belief about the object's
-position. Modify the state vector, x_, and covariance, P_.
-
-You'll also need to calculate the lidar NIS.
-*/
   const MatrixXd H = lidar_measurement_.H();
   VectorXd z_pred = H * x_;
   VectorXd z = meas_package.raw_measurements_;
@@ -159,7 +133,7 @@ You'll also need to calculate the lidar NIS.
 
   // NIS
   nis_lidar_ = y.transpose() * S.inverse() * y;
-  logger.log("lidar", nis_lidar_);
+  logger_.log("lidar", nis_lidar_);
 }
 
 VectorXd UKF::RadarMean(const MatrixXd& Xsig_pred, const MatrixXd& Zsig) {
@@ -220,7 +194,8 @@ MatrixXd UKF::RadarKalmanGain(const MatrixXd& S, const MatrixXd& Xsig_pred,
 }
 
 /**
- * Updates the state and the state covariance matrix using a radar measurement.
+ * Updates the state and the state covariance matrix using a radar
+ * measurement.
  * @param {MeasurementPackage} meas_package
  */
 void UKF::UpdateRadar(const MeasurementPackage& meas_package,
@@ -249,10 +224,11 @@ void UKF::UpdateRadar(const MeasurementPackage& meas_package,
   // update state mean and covariance matrix
   x_ = x_ + K * z_diff;
   P_ = P_ - K * S * K.transpose();
+
   // NIS
   VectorXd y = z - z_pred;
   nis_radar_ = y.transpose() * S.inverse() * y;
-  logger.log("radar", nis_radar_);
+  logger_.log("radar", nis_radar_);
 }
 
 void UKF::PredictMeanAndCovariance(const MatrixXd& Xsig_pred) {
@@ -376,4 +352,27 @@ MatrixXd UKF::GenerateSigmaPoints() {
   }
 
   return Xsig;
+}
+
+void UKF::InitFilter(MeasurementPackage meas_package) {
+  time_us_ = meas_package.timestamp_;
+  if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
+    x_ << meas_package.raw_measurements_(0), meas_package.raw_measurements_(1),
+        5, 0, 0;
+
+    MatrixXd R = lidar_measurement_.R();
+
+    P_ << R(0), 0, 0, 0, 0, 0, R(1), 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 5, 0, 0,
+        0, 0, 0, 5;
+  } else {
+    VectorXd rad_meas =
+        RadarMeasurement::polar2cartesian(meas_package.raw_measurements_);
+
+    x_ << rad_meas(0), rad_meas(1), rad_meas(2), 0, 0;
+    MatrixXd R = radar_measurement_.R();
+    P_ << R(0), 0, 0, 0, 0, 0, R(1), 0, 0, 0, 0, 0, R(2), 0, 0, 0, 0, 0, 5, 0,
+        0, 0, 0, 0, 5;
+  }
+
+  is_initialized_ = true;
 }

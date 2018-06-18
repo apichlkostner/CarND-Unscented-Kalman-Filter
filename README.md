@@ -1,12 +1,85 @@
-# DRAFT
 # Unscented Kalman Filter Project
+
+# Summary
+
+This project implements sensorfusion of radar and lidar sensor using an unscented kalman filter.
+
+The steps of this project are the following:
+
+- Implementation of the unscented kalman filter.
+- Connection of the kalman filter with the simulator using websockets.
+- Running the simulator and process the sensor data sent over the websockets.
+- Tracking the object with position and velocity.
+- Comparing the result with the ground truth as RSME.
+- Checking the results with only one of the sensors used.
+- Initialization of the sensor noise parameter with values from the vendor.
+- Initialization of the process noise parameter with estimations
+- Calculating the NIS value for different parameters to check if the noise estimation is plausible.
+
+# The filter
+
+## System
+
+The system is modeled as CTRV (constant turn rate and velocity magnitude).
+
+## Radar sensor
+
+Measures position and velocity of the object in polar coordinates. The measurement function is not linear.
+
+## Lidar sensor
+
+Measures only the position of the object. The measurement function is linear.
+
+# Implementation
+
+## Classes
+
+* `UKF`
+  * is called by `main()` with new measurements
+  * initializes the unscented kalman filter
+  * calls the kalman filter for prediction and update steps
+* `Logger`
+  * logging as csv table
+* `Measurement`
+  * covariance matrix
+  * `LidarMeasurement`
+    * measurement matrix for kalman filter
+  * `RadarMeasurement`
+    * coordinate transformation polar <-> cartesian
+    * jacobian for unscented kalman filter
+* `Tools`
+  * calculation of RMSE
+
+## NIS analysis
+
+Reads the log from the UKF and plots the NIS curve:
+
+[analyse/nis_analyse.ipynb](analyse/nis_analyse.ipynb)
+
+# Initialization
 
 std_a: 0.8
 
-std_yawdd: drives a bit less than 2 circles in 500 timesteps a 0.01s. So the yawdd = 4*pi/(500*0.01s) = 2.5
+std_yawdd: drives a bit less than 2 circles in 500 timesteps a 0.01s. So the yawdd = 4*pi/(500 * 0.01s) = 2.5
 Set std_yawdd half = 1.2
 
 Check -> best result with std_yawdd = 1.0
+
+# Result
+
+## Result with radar and lidar
+
+![](docu/result_radar_lidar.png)
+
+## Result with lidar only
+
+![](docu/result_lidar.png)
+
+## Result with radar only
+
+![](docu/result_radar.png)
+
+# NIS
 
 std_a   | std_yawdd | RMSE x | y     | vx     | vy     | nis radar | nis lidar
 --------|-----------|--------|-------|--------|--------|-----------|-----------

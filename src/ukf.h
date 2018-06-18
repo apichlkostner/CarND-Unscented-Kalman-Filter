@@ -63,7 +63,7 @@ class UKF {
   bool v_initialized_;
 
   ///* if this is false, laser measurements will be ignored (except for init)
-  bool use_laser_;
+  bool use_lidar_;
 
   ///* if this is false, radar measurements will be ignored (except for init)
   bool use_radar_;
@@ -80,7 +80,7 @@ class UKF {
   RadarMeasurement radar_measurement_;
   LidarMeasurement lidar_measurement_;
 
-  Logger logger;
+  Logger logger_;
 
   /**
    * Prediction Predicts sigma points, the state, and the state covariance
@@ -119,6 +119,8 @@ class UKF {
   MatrixXd AugmentedSigmaPoints();
 
   MatrixXd Sigma2Meas(const MatrixXd& Xsig_pred);
+
+  void InitFilter(MeasurementPackage meas_package);
 };
 
 #endif /* UKF_H */

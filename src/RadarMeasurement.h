@@ -8,10 +8,12 @@ class RadarMeasurement : public Measurement {
   /**
    * Constructor
    */
-  RadarMeasurement(double std_radr = 0.3, double std_radrd = 0.3, double std_radphi = 0.03) : Measurement(MatrixXd(3, 3)) {
+  RadarMeasurement(double std_radr = 0.3, double std_radrd = 0.3,
+                   double std_radphi = 0.03)
+      : Measurement(MatrixXd(3, 3)) {
     // radar covariance matrix
     R_ << std_radr * std_radr, 0, 0, 0, std_radphi * std_radphi, 0, 0, 0,
-      std_radrd * std_radrd;
+        std_radrd * std_radrd;
   }
 
   /**
@@ -20,11 +22,7 @@ class RadarMeasurement : public Measurement {
   virtual ~RadarMeasurement() {}
 
   const VectorXd cartesian(const VectorXd& x) { return polar2cartesian(x); }
-  /**
-   * Updates the state by using Extended Kalman Filter equations
-   * @param z The measurement at k+1
-   */
-  static MatrixXd CalculateJacobian(const VectorXd& x_state);
+
   static MatrixXd Sigma2Meas(const MatrixXd& Xsig_pred);
 
   static VectorXd polar2cartesian(const VectorXd& meas) {
