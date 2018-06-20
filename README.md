@@ -61,7 +61,7 @@ Reads the log from the UKF and plots the NIS curve:
 
 From analysing the trajectory of the car it can be found out that there is a maximum acceleration of 1.5 and a maximum yaw rate of 2.5.
 
-So good values could be std_a = 0.7 and std_yawdd = 1.2.
+So good values could be std_a = 0.7 and std_yawdd = 1.2. After checking different values the final parameters were std_a = 0.7 and std_yawdd = 1.2.
 
 The velocity is initialized with the measured velocity of the first radar measurement since there are no better values available. If the heading of the object was available the real velocity could be calculated.
 
